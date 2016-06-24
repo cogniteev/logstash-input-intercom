@@ -16,7 +16,7 @@ require "intercom"
 # input {
 #   intercom {
 #     app_id => ":appId"
-#     api_key => ":appApiKey"
+#     app_api_key => ":appApiKey"
 #   }
 # }
 # ----------------------------------
