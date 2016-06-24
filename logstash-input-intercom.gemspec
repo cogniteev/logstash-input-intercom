@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.description     = "This gem is a Logstash plugin required to be installed on top of the Logstash core pipeline using $LS_HOME/bin/logstash-plugin install gemname. This gem is not a stand-alone program"
   s.authors         = ["Cogniteev"]
   s.email           = 'techteam@cogniteev.com'
-  s.homepage        = "http://www.elastic.co/guide/en/logstash/current/index.html"
+  s.homepage        = 'https://github.com/cogniteev/logstash-input-intercom'
   s.require_paths   = ["lib"]
   s.platform        = "java"
 
