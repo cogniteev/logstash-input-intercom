@@ -36,6 +36,9 @@ class LogStash::Inputs::Intercom < LogStash::Inputs::Base
   # Set if we want to synchronize events
   config :sync_events, :validate => :boolean, :default => true
 
+  #Set if we want to synchronize users
+  config :sync_users, :validate => :boolean, :default => true
+
   public
 
   def register
@@ -57,8 +60,15 @@ class LogStash::Inputs::Intercom < LogStash::Inputs::Base
   end
 
   def sync_all(queue)
-    if @sync_events
-      sync_events queue
+    sync_users queue if @sync_users
+    sync_events queue if @sync_events
+  end
+
+  def sync_users(queue)
+    begin
+      get_users.each { |user| push_event queue, from_user(user) }
+    rescue Intercom::IntercomError => error
+      @logger.error? @logger.error("Failed to sync users", :error => error.to_s)
     end
   end
 
@@ -86,14 +96,34 @@ class LogStash::Inputs::Intercom < LogStash::Inputs::Base
     Intercom::Event.find_all(:type => 'user', :intercom_user_id => intercom_user_id)
   end
 
-  def from_event(intercom_event)
-    hash = prefix_keys flatten_hash(intercom_event.to_hash), 'event_'
-    hash['document_id'] = 'event_' + intercom_event.id
-    hash['type'] = 'event'
+  def from_user(intercom_user)
+    hash = intercom_object_to_hash intercom_user, 'user'
+    hash_to_logstash_event hash, intercom_user.created_at
+  end
 
-    event = LogStash::Event.new(LogStash::Util.stringify_symbols(hash))
-    event.timestamp = LogStash::Timestamp.new(intercom_event.created_at)
+  def from_event(intercom_event)
+    hash = intercom_object_to_hash intercom_event, 'event'
+    hash_to_logstash_event hash, intercom_event.created_at
+  end
+
+  def hash_to_logstash_event(hash, timestamp)
+    event = LogStash::Event.new LogStash::Util.stringify_symbols(hash)
+    event.timestamp = LogStash::Timestamp.new timestamp
     event
+  end
+
+  def intercom_object_to_hash(intercom_object, type)
+    # flatten object
+    hash = flatten_hash intercom_object.to_hash
+
+    # prefix all keys by the object type (avoid collision between fields names)
+    hash = prefix_keys hash, "#{type}_"
+
+    # adds identity
+    hash['type'] = type
+    hash['document_id'] = "#{type}_#{intercom_object.id}"
+
+    hash
   end
 
   def prefix_keys(hash, prefix)
@@ -108,8 +138,8 @@ class LogStash::Inputs::Intercom < LogStash::Inputs::Base
 
   def flatten_hash(hash)
     hash.each_with_object({}) do |(k, v), h|
-      if v.is_a? Hash
-        flatten_hash(v).map do |h_k, h_v|
+      if v.respond_to? :to_hash
+        flatten_hash(v.to_hash).map do |h_k, h_v|
           h["#{k}_#{h_k}"] = h_v
         end
       else
