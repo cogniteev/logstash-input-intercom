@@ -39,6 +39,9 @@ class LogStash::Inputs::Intercom < LogStash::Inputs::Base
   #Set if we want to synchronize users
   config :sync_users, :validate => :boolean, :default => true
 
+  # Set a list of keys to not flatten during export
+  config :flatten_excludes, :validate => :array, :default => []
+
   public
 
   def register
@@ -138,7 +141,7 @@ class LogStash::Inputs::Intercom < LogStash::Inputs::Base
 
   def flatten_hash(hash)
     hash.each_with_object({}) do |(k, v), h|
-      if v.respond_to? :to_hash
+      if v.respond_to? :to_hash and not @flatten_excludes.include? k
         flatten_hash(v.to_hash).map do |h_k, h_v|
           h["#{k}_#{h_k}"] = h_v
         end
