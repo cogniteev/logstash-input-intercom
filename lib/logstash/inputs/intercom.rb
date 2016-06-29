@@ -66,23 +66,15 @@ class LogStash::Inputs::Intercom < LogStash::Inputs::Base
   end
 
   def sync_all(queue)
-    sync_users queue if @sync_users
-    sync_events queue if @sync_events
-  end
-
-  def sync_users(queue)
-    begin
-      get_users.each { |user| push_event queue, from_user(user) }
-    rescue Intercom::IntercomError => error
-      @logger.error? @logger.error("Failed to sync users", :error => error.to_s)
-    end
-  end
-
-  def sync_events(queue)
-    begin
-      get_users.each { |user| sync_events_for queue, user.id }
-    rescue Intercom::IntercomError => error
-      @logger.error? @logger.error("Failed to sync events", :error => error.to_s)
+    if @sync_users or @sync_events
+      begin
+        get_users.each { |user|
+          push_event queue, from_user(user) if @sync_users
+          sync_events_for queue, user.id if @sync_events
+        }
+      rescue Intercom::IntercomError => error
+        @logger.error? @logger.error("Failed to sync", :error => error.to_s)
+      end
     end
   end
 
