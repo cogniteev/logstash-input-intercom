@@ -17,6 +17,9 @@ require "intercom"
 #   intercom {
 #     app_id => ":appId"
 #     app_api_key => ":appApiKey"
+#     sync_users => true
+#     sync_events => true
+#     flatten_excludes => []
 #   }
 # }
 # ----------------------------------
